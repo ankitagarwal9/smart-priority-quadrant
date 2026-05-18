@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Priority Quadrant</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#EEEDE8;color:#374151;min-height:100vh;}
+.page{max-width:960px;margin:0 auto;padding:20px 16px;}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.hdr-left h1{font-size:18px;font-weight:700;color:#0D2B4E;}
+.clock{font-size:11px;color:#6B7280;margin-top:3px;}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.stats{display:flex;gap:6px;flex-wrap:wrap;}
+.stat{font-size:11px;padding:3px 9px;border-radius:20px;background:#fff;border:1px solid #E5E7EB;color:#6B7280;}
+.stat-red{background:#FEE2E2;border-color:#FECACA;color:#991B1B;font-weight:600;}
+.stat-amber{background:#FEF3C7;border-color:#FDE68A;color:#92400E;font-weight:600;}
+.stat-purple{background:#EDE9FE;border-color:#C4B5FD;color:#5B21B6;font-weight:600;}
+.btn-add{font-size:12px;font-weight:600;padding:7px 16px;background:#0D2B4E;color:white;border:none;border-radius:7px;cursor:pointer;font-family:inherit;}
+.btn-add:hover{background:#1a4070;}
+.tabs{display:flex;gap:2px;margin-bottom:14px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:4px;width:fit-content;}
+.tab{font-size:12px;padding:5px 16px;border-radius:5px;border:none;background:transparent;cursor:pointer;color:#6B7280;font-family:inherit;font-weight:500;}
+.tab.active{background:#0D2B4E;color:white;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.fbtn{font-size:11px;padding:4px 13px;border-radius:20px;cursor:pointer;border:1px solid;background:transparent;font-family:inherit;}
+.chart-wrap{position:relative;background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:8px;margin-bottom:8px;}
+svg{width:100%;height:auto;display:block;}
+.tooltip{position:absolute;background:#fff;border:1px solid #D1D5DB;border-radius:8px;padding:8px 12px;font-size:12px;color:#111827;pointer-events:none;display:none;max-width:270px;z-index:20;line-height:1.6;box-shadow:0 2px 10px rgba(0,0,0,.1);}
+.dot-g{cursor:pointer;}
+.dot-t{font-size:7px;font-weight:700;fill:white;text-anchor:middle;dominant-baseline:central;pointer-events:none;}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6B7280;margin-bottom:4px;}
+.leg-item{display:flex;align-items:center;gap:5px;}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.task-group{margin-bottom:16px;}
+.tg-hdr{font-size:11px;font-weight:600;padding:3px 10px;border-radius:4px;display:inline-block;margin-bottom:8px;}
+.task-cards{display:flex;flex-direction:column;gap:5px;}
+.task-card{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;}
+.task-card.done-card{opacity:.5;}
+.tc-left{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;}
+.tc-check{width:16px;height:16px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:#059669;}
+.tc-body{flex:1;min-width:0;}
+.tc-title{font-size:13px;font-weight:500;color:#111827;line-height:1.4;}
+.done-card .tc-title{text-decoration:line-through;color:#9CA3AF;}
+.tc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
+.tc-tag{font-size:10px;padding:1px 7px;border-radius:10px;font-weight:500;white-space:nowrap;}
+.tag-do{background:#FEE2E2;color:#991B1B;}
+.tag-schedule{background:#DBEAFE;color:#1E40AF;}
+.tag-defer{background:#F3F4F6;color:#6B7280;}
+.tag-overdue{background:#DC2626;color:white;font-weight:700;}
+.tag-soon{background:#FEF3C7;color:#92400E;}
+.tag-dl{background:#F3F4F6;color:#374151;}
+.tag-recurring{background:#EDE9FE;color:#5B21B6;font-weight:700;}
+.tag-ends-soon{background:#EDE9FE;color:#5B21B6;}
+.tag-ended{background:#DC2626;color:white;font-weight:700;}
+.tc-notes{font-size:11px;color:#9CA3AF;margin-top:3px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tc-actions{display:flex;gap:4px;flex-shrink:0;}
+.act-btn{font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid #E5E7EB;background:transparent;cursor:pointer;color:#6B7280;font-family:inherit;white-space:nowrap;}
+.act-btn:hover{background:#F9FAFB;}
+.act-del{color:#EF4444;border-color:#FECACA;}
+.act-del:hover{background:#FEF2F2;}
+.act-edit{color:#2563EB;border-color:#BFDBFE;}
+.act-edit:hover{background:#EFF6FF;}
+.recur-slots{display:flex;flex-direction:column;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid #F3F4F6;}
+.recur-slot{display:flex;align-items:center;gap:7px;font-size:12px;}
+.recur-slot-check{width:14px;height:14px;cursor:pointer;accent-color:#7C3AED;flex-shrink:0;}
+.slot-time{color:#374151;font-weight:500;}
+.recur-slot.slot-done .slot-time{text-decoration:line-through;color:#9CA3AF;}
+.notif-area{display:flex;flex-direction:column;gap:6px;}
+.notif-banner{background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:9px 14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.5;}
+.notif-action{font-size:11px;padding:3px 10px;border-radius:5px;border:none;cursor:pointer;font-family:inherit;font-weight:600;}
+.notif-extend{background:#DBEAFE;color:#1E40AF;}
+.notif-archive{background:#D1FAE5;color:#065F46;}
+.notif-delete{background:#FEE2E2;color:#991B1B;}
+.notif-dismiss{background:transparent;color:#9CA3AF;border:none;font-size:18px;cursor:pointer;margin-left:auto;padding:0 4px;line-height:1;}
+.arc-date-hdr{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#9CA3AF;margin:14px 0 7px;}
+.arc-item{background:#fff;border:1px solid #F3F4F6;border-radius:7px;padding:8px 12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.arc-title{font-size:13px;color:#6B7280;text-decoration:line-through;}
+.arc-meta{font-size:11px;color:#9CA3AF;margin-top:2px;}
+.arc-time{font-size:11px;color:#9CA3AF;flex-shrink:0;text-align:right;}
+.empty{text-align:center;padding:40px 20px;color:#9CA3AF;font-size:13px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.m-hdr{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #F3F4F6;}
+.m-hdr h3{font-size:15px;font-weight:600;color:#0D2B4E;}
+.m-close{font-size:20px;background:none;border:none;cursor:pointer;color:#9CA3AF;line-height:1;padding:0 4px;}
+.m-close:hover{color:#374151;}
+.m-body{padding:16px 20px;display:flex;flex-direction:column;gap:13px;}
+.m-foot{padding:12px 20px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end;gap:8px;}
+.f-row{display:flex;flex-direction:column;gap:5px;}
+.f-lbl{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;}
+.f-input{font-size:13px;padding:8px 10px;border:1px solid #E5E7EB;border-radius:7px;font-family:inherit;color:#374151;background:#F9FAFB;}
+.f-input:focus{outline:none;border-color:#0D2B4E;background:#fff;}
+.f-range{padding:0;border:none;background:transparent;width:100%;}
+.f-range-labels{display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;margin-top:1px;}
+.tog-row{display:flex;align-items:center;gap:10px;}
+.tog{position:relative;width:36px;height:20px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;inset:0;background:#D1D5DB;border-radius:20px;cursor:pointer;transition:.2s;}
+.tog-sl:before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:white;border-radius:50%;transition:.2s;}
+.tog input:checked + .tog-sl{background:#059669;}
+.tog input:checked + .tog-sl:before{transform:translateX(16px);}
+#f-recurring:checked + .tog-sl{background:#7C3AED;}
+.preview-box{background:#F0FDF4;border:1px solid #D1FAE5;border-radius:6px;padding:8px 12px;font-size:12px;color:#065F46;}
+.btn-cancel{font-size:12px;padding:7px 16px;border:1px solid #E5E7EB;border-radius:7px;background:transparent;cursor:pointer;color:#6B7280;font-family:inherit;}
+.btn-save{font-size:12px;font-weight:600;padding:7px 18px;background:#0D2B4E;color:white;border:none;border-radius:7px;cursor:pointer;font-family:inherit;}
+.btn-save:hover{background:#1a4070;}
+.btn-del-confirm{font-size:12px;font-weight:600;padding:7px 18px;background:#DC2626;color:white;border:none;border-radius:7px;cursor:pointer;font-family:inherit;}
+.btn-del-confirm:hover{background:#B91C1C;}
+.rec-section{background:#FAF5FF;border:1px solid #E9D5FF;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:11px;}
+.slot-list-wrap{display:flex;flex-direction:column;gap:5px;}
+.slot-row{display:flex;gap:6px;align-items:center;}
+.slot-rem-btn{padding:4px 9px;border:1px solid #FECACA;background:transparent;border-radius:5px;color:#EF4444;cursor:pointer;font-size:14px;line-height:1;font-family:inherit;}
+.slot-rem-btn:hover{background:#FEF2F2;}
+.slot-add-btn{font-size:11px;padding:4px 10px;border:1px dashed #C4B5FD;border-radius:5px;background:transparent;cursor:pointer;color:#7C3AED;font-family:inherit;align-self:flex-start;margin-top:3px;}
+.slot-add-btn:hover{background:#EDE9FE;}
+.days-wrap{display:flex;gap:8px;flex-wrap:wrap;}
+.day-lbl{display:flex;align-items:center;gap:3px;font-size:12px;color:#374151;cursor:pointer;}
+.day-lbl input{accent-color:#7C3AED;}
+footer{font-size:10px;color:#9CA3AF;text-align:center;margin-top:20px;padding-top:12px;border-top:1px solid #E5E7EB;}
+@media(max-width:540px){.hdr{flex-direction:column;}.task-card{flex-direction:column;}.tc-actions{align-self:flex-end;}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Smart Priority Quadrant</h1>
+    <div id="clock" class="clock"></div>
+  </div>
+  <div class="hdr-right">
+    <div class="stats" id="stats"></div>
+    <button class="btn-add" onclick="openAdd()">+ Add Task</button>
+  </div>
+</div>
+
+<div id="notif-area" class="notif-area" style="margin-bottom:10px;"></div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('quadrant',this)">Quadrant</button>
+  <button class="tab" onclick="showTab('list',this)">Task List</button>
+  <button class="tab" onclick="showTab('archive',this)">Archive</button>
+</div>
+
+<div id="tab-quadrant" class="tab-panel active">
+  <div class="filters" id="filters"></div>
+  <div class="chart-wrap" id="chart-wrap">
+    <svg viewBox="0 0 700 500" id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <div class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:#DC2626;box-shadow:0 0 0 2px #DC262655;"></span>Overdue</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#D85A30"></span>Do Now</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#2563EB"></span>Schedule</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#6B7280"></span>Defer</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#059669"></span>Done</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#7C3AED;outline:2px solid #C4B5FD;outline-offset:2px;"></span>Recurring</span>
+    <span style="margin-left:auto;font-size:10px;color:#9CA3AF;">Auto-positions by deadline. Refreshes every minute.</span>
+  </div>
+</div>
+
+<div id="tab-list" class="tab-panel"><div id="task-list"></div></div>
+<div id="tab-archive" class="tab-panel"><div id="archive-list"></div></div>
+
+<footer>Smart Priority Quadrant &middot; Auto-saves to browser &middot; Positions update with deadline proximity &middot; v3.0</footer>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="add-modal" onclick="closeAdd()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="m-hdr"><h3 id="modal-title">Add Task</h3><button class="m-close" onclick="closeAdd()">&times;</button></div>
+  <div class="m-body">
+    <div class="f-row">
+      <label class="f-lbl">Task name *</label>
+      <input class="f-input" type="text" id="f-title" placeholder="What needs to be done?" maxlength="120">
+    </div>
+    <div class="f-row">
+      <label class="f-lbl">Importance: <span id="f-im-val">70</span> / 100</label>
+      <input class="f-range" type="range" id="f-im" min="5" max="99" value="70" oninput="document.getElementById('f-im-val').textContent=this.value;previewCat()">
+      <div class="f-range-labels"><span>Low</span><span>Critical</span></div>
+    </div>
+    <div id="f-dl-section">
+      <div class="f-row">
+        <label class="f-lbl">Has a deadline?</label>
+        <div class="tog-row">
+          <label class="tog"><input type="checkbox" id="f-hasdl" onchange="toggleDL()"><span class="tog-sl"></span></label>
+          <span id="f-dl-txt" style="font-size:12px;color:#6B7280;">No &mdash; set manual urgency below</span>
+        </div>
+      </div>
+      <div id="f-dl-wrap" style="display:none" class="f-row">
+        <label class="f-lbl">Deadline (date and time)</label>
+        <input class="f-input" type="datetime-local" id="f-deadline" oninput="previewCat()">
+      </div>
+      <div id="f-ur-wrap" class="f-row">
+        <label class="f-lbl">Urgency (manual): <span id="f-ur-val">50</span> / 100</label>
+        <input class="f-range" type="range" id="f-urgency" min="5" max="99" value="50" oninput="document.getElementById('f-ur-val').textContent=this.value;previewCat()">
+        <div class="f-range-labels"><span>Not urgent</span><span>Very urgent</span></div>
+      </div>
+    </div>
+    <div class="f-row">
+      <label class="f-lbl">Recurring task?</label>
+      <div class="tog-row">
+        <label class="tog"><input type="checkbox" id="f-recurring" onchange="toggleRecurring()"><span class="tog-sl"></span></label>
+        <span id="f-rec-txt" style="font-size:12px;color:#6B7280;">No &mdash; one-off task</span>
+      </div>
+    </div>
+    <div id="f-rec-wrap" style="display:none;" class="rec-section">
+      <div class="f-row">
+        <label class="f-lbl">Recurrence type</label>
+        <select class="f-input" id="f-rectype" onchange="updateRecurrenceUI()">
+          <option value="daily">Every day</option>
+          <option value="weekly">Specific days of the week</option>
+        </select>
+      </div>
+      <div id="f-days-wrap" style="display:none;" class="f-row">
+        <label class="f-lbl">Days</label>
+        <div class="days-wrap">
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="mon"> Mon</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="tue"> Tue</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="wed"> Wed</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="thu"> Thu</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="fri"> Fri</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="sat"> Sat</label>
+          <label class="day-lbl"><input type="checkbox" class="rec-day" value="sun"> Sun</label>
+        </div>
+      </div>
+      <div class="f-row">
+        <label class="f-lbl">Time slots <span style="font-weight:normal;text-transform:none;font-size:10px;color:#9CA3AF;">(when this task is due each day)</span></label>
+        <div id="f-slots-list" class="slot-list-wrap"></div>
+        <button type="button" class="slot-add-btn" onclick="addTimeSlot()">+ Add time slot</button>
+      </div>
+      <div class="f-row">
+        <label class="f-lbl">Priority (for quadrant): <span id="f-rec-ur-val">75</span> / 100</label>
+        <input class="f-range" type="range" id="f-rec-urgency" min="5" max="99" value="75" oninput="document.getElementById('f-rec-ur-val').textContent=this.value;previewCat()">
+        <div class="f-range-labels"><span>Low</span><span>High</span></div>
+      </div>
+      <div class="f-row">
+        <label class="f-lbl">End condition</label>
+        <select class="f-input" id="f-endtype" onchange="updateEndUI()">
+          <option value="none">No end &mdash; repeats forever</option>
+          <option value="date">End on a specific date</option>
+          <option value="days">End after N days from today</option>
+        </select>
+      </div>
+      <div id="f-enddate-wrap" style="display:none;" class="f-row">
+        <label class="f-lbl">End date</label>
+        <input class="f-input" type="date" id="f-enddate">
+      </div>
+      <div id="f-enddays-wrap" style="display:none;" class="f-row">
+        <label class="f-lbl">Repeat for how many days?</label>
+        <input class="f-input" type="number" id="f-enddays" min="1" max="3650" placeholder="e.g. 30">
+      </div>
+    </div>
+    <div class="f-row">
+      <label class="f-lbl">Notes (optional)</label>
+      <textarea class="f-input" id="f-notes" rows="2" placeholder="Context, blockers, links..."></textarea>
+    </div>
+    <div class="preview-box" id="preview-box">Adjust sliders to preview placement.</div>
+  </div>
+  <div class="m-foot">
+    <button class="btn-cancel" onclick="closeAdd()">Cancel</button>
+    <button class="btn-save" onclick="saveTask()">Save Task</button>
+  </div>
+</div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="del-modal" onclick="closeDelModal()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="m-hdr"><h3>Delete Task</h3><button class="m-close" onclick="closeDelModal()">&times;</button></div>
+  <div class="m-body">
+    <div class="f-row"><p id="del-msg" style="font-size:13px;color:#374151;line-height:1.6;"></p></div>
+    <div id="del-reason-wrap" class="f-row" style="display:none;">
+      <label class="f-lbl">Why are you removing this without completing it?</label>
+      <textarea class="f-input" id="del-reason" rows="3" placeholder="No longer relevant / blocked externally / changed priorities..."></textarea>
+    </div>
+  </div>
+  <div class="m-foot">
+    <button class="btn-cancel" onclick="closeDelModal()">Keep It</button>
+    <button class="btn-del-confirm" onclick="confirmDel()">Delete Permanently</button>
+  </div>
+</div>
+</div>
+
+<script>
+var LS_T='spq2_tasks', LS_A='spq2_archive';
+var CC={do:'#D85A30',schedule:'#2563EB',defer:'#6B7280'};
+var tasks=[], archive=[], editId=null, delId=null, curFilt='all';
+var modalTimeSlots=[];
+
+var SEED=[
+  {id:1,title:"Submit project report",importance:90,deadline:"2026-06-01T17:00",urgencyManual:null,notes:"Hard deadline"},
+  {id:2,title:"Team meeting prep",importance:75,deadline:"2026-06-15T09:00",urgencyManual:null,notes:"Prepare slides"},
+  {id:3,title:"Exercise",importance:80,deadline:null,urgencyManual:60,notes:"3x per week"},
+  {id:4,title:"Read book chapter",importance:50,deadline:null,urgencyManual:30,notes:""}
+];
+
+function todayKey(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function getSlotsDoneToday(t){
+  if(!t.recurring||!t.completionLog) return [];
+  return t.completionLog[todayKey()]||[];
+}
+function allSlotsDoneToday(t){
+  if(!t.recurrenceTimes||!t.recurrenceTimes.length) return false;
+  var done=getSlotsDoneToday(t);
+  return t.recurrenceTimes.every(function(s){return done.indexOf(s)>=0;});
+}
+function someSlotsDoneToday(t){
+  return getSlotsDoneToday(t).length>0;
+}
+
+var _lastDate=todayKey();
+
+function loadData(){
+  try{tasks=JSON.parse(localStorage.getItem(LS_T));if(!Array.isArray(tasks))throw 0;}
+  catch(e){tasks=SEED.map(function(s){return Object.assign({},s,{done:false,createdAt:new Date().toISOString(),completionLog:{}});});}
+  try{archive=JSON.parse(localStorage.getItem(LS_A));if(!Array.isArray(archive))throw 0;}
+  catch(e){archive=[];}
+  tasks.forEach(function(t){if(!t.completionLog)t.completionLog={};});
+}
+function saveData(){
+  localStorage.setItem(LS_T,JSON.stringify(tasks));
+  localStorage.setItem(LS_A,JSON.stringify(archive));
+}
+
+function calcPr(t){
+  if(t.recurring) return t.urgencyManual||75;
+  if(!t.deadline) return t.urgencyManual||50;
+  var days=(new Date(t.deadline)-new Date())/86400000;
+  if(days<=0) return 99;
+  if(days<0.5) return 96;
+  if(days<1) return 92;
+  if(days<2) return 87;
+  if(days<4) return 80;
+  if(days<7) return 70;
+  if(days<14) return 55;
+  if(days<30) return 38;
+  if(days<60) return 25;
+  return 12;
+}
+function calcCat(pr,im){
+  if(pr>=65&&im>=55) return 'do';
+  if(im>=65&&pr<65) return 'schedule';
+  return 'defer';
+}
+function isOD(t){
+  if(t.recurring) return false;
+  return !!t.deadline&&new Date(t.deadline)<new Date();
+}
+function daysStr(t){
+  if(t.recurring){
+    if(!t.recurrenceEndDate) return null;
+    var d=(new Date(t.recurrenceEndDate)-new Date())/86400000;
+    if(d<0) return 'ENDED';
+    if(d<1) return 'Ends today';
+    return 'Ends in '+Math.ceil(d)+'d';
+  }
+  if(!t.deadline) return null;
+  var d=(new Date(t.deadline)-new Date())/86400000;
+  if(d<=0) return 'OVERDUE';
+  if(d<0.5) return 'Due in hours';
+  if(d<1) return 'Due today';
+  if(d<2) return 'Due tomorrow';
+  return Math.ceil(d)+'d left';
+}
+function nextId(){return [...tasks,...archive].reduce(function(m,t){return Math.max(m,t.id);},0)+1;}
+function fmtDate(iso){return new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function fmtTime(iso){return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function fmtFull(iso){return new Date(iso).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function tick(){
+  var n=new Date();
+  document.getElementById('clock').textContent=n.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' - '+n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function updateStats(){
+  var act=tasks.filter(function(t){return !t.done;});
+  var nonRec=act.filter(function(t){return !t.recurring;});
+  var od=nonRec.filter(function(t){return isOD(t);}).length;
+  var td=nonRec.filter(function(t){if(!t.deadline)return false;var d=(new Date(t.deadline)-new Date())/86400000;return d>=0&&d<1;}).length;
+  var dn=tasks.filter(function(t){return t.done;}).length;
+  var rec=tasks.filter(function(t){return t.recurring;}).length;
+  var pct=tasks.length?Math.round(dn/tasks.length*100):0;
+  var html='';
+  if(od) html+='<span class="stat stat-red">'+String.fromCodePoint(9888)+' '+od+' overdue</span>';
+  if(td) html+='<span class="stat stat-amber">'+String.fromCodePoint(9200)+' '+td+' due today</span>';
+  if(rec) html+='<span class="stat stat-purple">'+String.fromCodePoint(8635)+' '+rec+' recurring</span>';
+  html+='<span class="stat">'+tasks.length+' tasks - '+pct+'% done</span>';
+  document.getElementById('stats').textContent='';
+  var el=document.getElementById('stats');
+  el.textContent='';
+  var tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  while(tmp.firstChild) el.appendChild(tmp.firstChild);
+}
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='list') renderList();
+  if(name==='archive') renderArchive();
+}
+
+function buildFilters(){
+  var fb=document.getElementById('filters');fb.textContent='';
+  var act=tasks.filter(function(t){return !t.done;});
+  var cnt={do:0,schedule:0,defer:0};
+  act.forEach(function(t){var pr=calcPr(t);cnt[calcCat(pr,t.importance)]++;});
+  [{f:'all',l:'All ('+act.length+')',col:'#D85A30'},{f:'do',l:'Do Now ('+cnt.do+')',col:'#D85A30'},{f:'schedule',l:'Schedule ('+cnt.schedule+')',col:'#2563EB'},{f:'defer',l:'Defer ('+cnt.defer+')',col:'#6B7280'}].forEach(function(o){
+    var b=document.createElement('button');b.className='fbtn';b.textContent=o.l;
+    b.style.borderColor=o.col;
+    if(curFilt===o.f){b.style.background=o.col;b.style.color='white';}else b.style.color=o.col;
+    b.onclick=function(){curFilt=o.f;buildFilters();drawDots();};
+    fb.appendChild(b);
+  });
+}
+
+var ML=70,MT=28,PW=570,PH=410;
+var SVGEL=document.getElementById('svg'),CW=document.getElementById('chart-wrap'),TT=document.getElementById('tooltip');
+var NS='http://www.w3.org/2000/svg';
+function sx(p){return ML+(Math.min(p,99)/100)*PW;}
+function sy(i){return MT+PH-(Math.min(i,99)/100)*PH;}
+function mkEl(tag,a,par){par=par||SVGEL;var e=document.createElementNS(NS,tag);Object.entries(a).forEach(function(kv){e.setAttribute(kv[0],kv[1]);});par.appendChild(e);return e;}
+function mkTx(x,y,s,a,par){par=par||SVGEL;var e=mkEl('text',Object.assign({x:x,y:y},a),par);e.textContent=s;return e;}
+
+var bgDrawn=false;
+function drawBg(){
+  if(bgDrawn) return;bgDrawn=true;
+  mkEl('rect',{x:ML,y:MT,width:PW/2,height:PH/2,fill:'#DBEAFE',opacity:.22});
+  mkEl('rect',{x:ML+PW/2,y:MT,width:PW/2,height:PH/2,fill:'#FEE2E2',opacity:.22});
+  mkEl('rect',{x:ML,y:MT+PH/2,width:PW/2,height:PH/2,fill:'#F3F4F6',opacity:.55});
+  mkEl('rect',{x:ML+PW/2,y:MT+PH/2,width:PW/2,height:PH/2,fill:'#F3F4F6',opacity:.25});
+  mkEl('line',{x1:ML+PW/2,y1:MT,x2:ML+PW/2,y2:MT+PH,stroke:'#D1D5DB','stroke-width':1,'stroke-dasharray':'5,4'});
+  mkEl('line',{x1:ML,y1:MT+PH/2,x2:ML+PW,y2:MT+PH/2,stroke:'#D1D5DB','stroke-width':1,'stroke-dasharray':'5,4'});
+  mkEl('line',{x1:ML,y1:MT+PH,x2:ML+PW,y2:MT+PH,stroke:'#9CA3AF','stroke-width':1.5});
+  mkEl('line',{x1:ML,y1:MT,x2:ML,y2:MT+PH,stroke:'#9CA3AF','stroke-width':1.5});
+  var f="'Segoe UI',Arial,sans-serif",g='#9CA3AF';
+  mkTx(ML+PW/2,MT+PH+36,'Priority (auto-set by deadline)',{'font-size':11,'font-family':f,fill:g,'text-anchor':'middle'});
+  mkTx(ML,MT+PH+17,'Low',{'font-size':10,'font-family':f,fill:g,'text-anchor':'middle'});
+  mkTx(ML+PW,MT+PH+17,'High',{'font-size':10,'font-family':f,fill:g,'text-anchor':'end'});
+  var yl=mkEl('text',{x:13,y:MT+PH/2,'font-size':11,'font-family':f,fill:g,'text-anchor':'middle',transform:'rotate(-90,13,'+(MT+PH/2)+')'});yl.textContent='Importance';
+  mkTx(58,MT+11,'High',{'font-size':10,'font-family':f,fill:g,'text-anchor':'end'});
+  mkTx(58,MT+PH+2,'Low',{'font-size':10,'font-family':f,fill:g,'text-anchor':'end'});
+  [{x:ML+PW*.25,y:MT+20,t:'SCHEDULE',fill:'#2563EB'},{x:ML+PW*.75,y:MT+20,t:'DO NOW',fill:'#D85A30'},{x:ML+PW*.25,y:MT+PH-11,t:'DEFER',fill:'#6B7280'},{x:ML+PW*.75,y:MT+PH-11,t:'QUICK WINS',fill:'#D97706'}].forEach(function(q){mkTx(q.x,q.y,q.t,{'font-size':9,'font-weight':'700','letter-spacing':'.08em','font-family':f,fill:q.fill,opacity:.6,'text-anchor':'middle'});});
+}
+
+function drawDots(){
+  var old=document.getElementById('dot-g');if(old)old.remove();
+  var g=mkEl('g',{id:'dot-g'});
+  tasks.forEach(function(t){
+    var pr=calcPr(t),cat=calcCat(pr,t.importance),od=isOD(t);
+    var vis=curFilt==='all'||cat===curFilt;
+    var dg=document.createElementNS(NS,'g');dg.setAttribute('class','dot-g');
+    dg.style.opacity=!vis?'0.05':t.done?'0.25':'1';dg.style.transition='opacity .2s';
+    var x=sx(pr),y=sy(t.importance),r=9;
+    var tx=document.createElementNS(NS,'text');
+    tx.setAttribute('x',x);tx.setAttribute('y',y);tx.setAttribute('class','dot-t');
+
+    if(t.recurring){
+      var allDone=allSlotsDoneToday(t);
+      var someDone=someSlotsDoneToday(t);
+      var dotColor=allDone?'#059669':someDone?'#F59E0B':CC[cat];
+      mkEl('circle',{cx:x,cy:y,r:r+4,fill:'none',stroke:'#7C3AED','stroke-width':2,opacity:.75},dg);
+      mkEl('circle',{cx:x,cy:y,r:r,fill:dotColor,stroke:'white','stroke-width':1.5},dg);
+      tx.setAttribute('font-size',allDone?'9':'7');
+      tx.textContent=allDone?'✓':String(t.id);
+    } else {
+      if(od&&!t.done) mkEl('circle',{cx:x,cy:y,r:r+5,fill:'none',stroke:'#DC2626','stroke-width':2,opacity:.6},dg);
+      var dc=t.done?'#059669':od?'#DC2626':CC[cat];
+      mkEl('circle',{cx:x,cy:y,r:r,fill:dc,stroke:'white','stroke-width':1.5},dg);
+      tx.setAttribute('font-size',t.done?'9':'7');
+      tx.textContent=t.done?'✓':String(t.id);
+    }
+    dg.appendChild(tx);
+
+    dg.addEventListener('mousemove',function(e){
+      var rb=CW.getBoundingClientRect();
+      var lx=e.clientX-rb.left+15,ly=e.clientY-rb.top-60;
+      if(lx>rb.width-275) lx=e.clientX-rb.left-275;if(ly<0)ly=5;
+      var ds=daysStr(t);
+      TT.style.left=lx+'px';TT.style.top=ly+'px';
+      var parts=[];
+      parts.push(document.createTextNode('#'+t.id+' '+t.title));
+      if(t.recurring){
+        var done=getSlotsDoneToday(t);
+        var info=document.createElement('span');
+        info.style.cssText='display:block;font-size:10px;color:#7C3AED;';
+        info.textContent='↻ Recurring - Today: '+done.length+'/'+((t.recurrenceTimes||[]).length)+' slots done'+(ds?' - '+ds:'');
+        parts.push(info);
+      } else if(t.deadline){
+        var dlSpan=document.createElement('span');
+        dlSpan.style.cssText='display:block;font-size:10px;color:'+(od?'#DC2626':'#9CA3AF')+';';
+        dlSpan.textContent=(ds||'')+' - '+fmtDate(t.deadline)+' '+fmtTime(t.deadline);
+        parts.push(dlSpan);
+      }
+      var catSpan=document.createElement('span');
+      catSpan.style.cssText='display:block;font-size:10px;color:#9CA3AF;';
+      catSpan.textContent='Category: '+{do:'Do Now',schedule:'Schedule',defer:'Defer'}[cat]+' - Im: '+t.importance+' - Pr: '+Math.round(pr);
+      parts.push(catSpan);
+      var wrap=document.createElement('strong');
+      wrap.textContent='#'+t.id+' '+t.title;
+      TT.textContent='';
+      TT.appendChild(wrap);
+      parts.slice(1).forEach(function(p){TT.appendChild(p);});
+      TT.style.display='block';
+    });
+    dg.addEventListener('mouseleave',function(){TT.style.display='none';});
+    g.appendChild(dg);
+  });
+}
+
+function redrawAll(){drawDots();buildFilters();updateStats();}
+
+function makeTag(cls,text){
+  var s=document.createElement('span');
+  s.className='tc-tag '+cls;
+  s.textContent=text;
+  return s;
+}
+function makeEl(tag,attrs,text){
+  var el=document.createElement(tag);
+  if(attrs) Object.assign(el,attrs);
+  if(text!==undefined) el.textContent=text;
+  return el;
+}
+
+function renderList(){
+  var G={
+    do:{title:'Do Now',col:CC.do,items:[]},
+    schedule:{title:'Schedule',col:CC.schedule,items:[]},
+    defer:{title:'Defer',col:CC.defer,items:[]},
+    done:{title:'Done',col:'#059669',items:[]}
+  };
+  tasks.forEach(function(t){
+    var pr=calcPr(t),cat=calcCat(pr,t.importance);
+    var group=(t.done&&!t.recurring)?'done':cat;
+    var copy=Object.assign({},t);copy._pr=pr;copy._cat=cat;
+    G[group].items.push(copy);
+  });
+  var el=document.getElementById('task-list');el.textContent='';
+  if(!tasks.length){var em=document.createElement('div');em.className='empty';em.textContent='No tasks yet. Click "+ Add Task" to begin.';el.appendChild(em);return;}
+  Object.values(G).forEach(function(g){
+    if(!g.items.length) return;
+    var div=document.createElement('div');div.className='task-group';
+    var hdr=document.createElement('div');hdr.className='tg-hdr';hdr.style.color=g.col;hdr.style.background=g.col+'18';hdr.textContent=g.title+' - '+g.items.length;div.appendChild(hdr);
+    var cards=document.createElement('div');cards.className='task-cards';
+    g.items.slice().sort(function(a,b){return b._pr-a._pr;}).forEach(function(t){
+      var od=isOD(t),ds=daysStr(t);
+      var card=document.createElement('div');card.className='task-card'+(t.done&&!t.recurring?' done-card':'');
+
+      var tcLeft=document.createElement('div');tcLeft.className='tc-left';
+      var tcBody=document.createElement('div');tcBody.className='tc-body';
+      var tcActions=document.createElement('div');tcActions.className='tc-actions';
+
+      var editBtn=document.createElement('button');editBtn.className='act-btn act-edit';editBtn.textContent='Edit';
+      (function(id){editBtn.onclick=function(){openEdit(id);};})(t.id);
+      var delBtn=document.createElement('button');delBtn.className='act-btn act-del';delBtn.textContent='×';
+      (function(id){delBtn.onclick=function(){openDel(id);};})(t.id);
+      tcActions.appendChild(editBtn);tcActions.appendChild(delBtn);
+
+      var titleEl=document.createElement('div');titleEl.className='tc-title';titleEl.textContent=t.title;
+      var metaEl=document.createElement('div');metaEl.className='tc-meta';
+      tcBody.appendChild(titleEl);tcBody.appendChild(metaEl);
+
+      if(t.recurring){
+        var allDone=allSlotsDoneToday(t);
+        if(allDone){var doneSpan=document.createElement('span');doneSpan.style.cssText='font-size:11px;color:#059669;font-weight:normal;';doneSpan.textContent=' ✓ all done today';titleEl.appendChild(doneSpan);}
+        metaEl.appendChild(makeTag('tc-tag tag-recurring','↻ RECURRING'));
+        metaEl.appendChild(makeTag('tc-tag tag-'+t._cat,t._cat==='do'?'Do Now':t._cat==='schedule'?'Schedule':'Defer'));
+        if(ds==='ENDED') metaEl.appendChild(makeTag('tc-tag tag-ended','ENDED'));
+        else if(ds) metaEl.appendChild(makeTag('tc-tag tag-ends-soon',ds));
+        if(t.notes){var n=document.createElement('div');n.className='tc-notes';n.textContent=t.notes;tcBody.appendChild(n);}
+        var slotsDiv=document.createElement('div');slotsDiv.className='recur-slots';
+        var slotsDone=getSlotsDoneToday(t);
+        (t.recurrenceTimes||[]).forEach(function(slot){
+          var isDone=slotsDone.indexOf(slot)>=0;
+          var row=document.createElement('div');row.className='recur-slot'+(isDone?' slot-done':'');
+          var cb=document.createElement('input');cb.type='checkbox';cb.className='recur-slot-check';cb.checked=isDone;
+          (function(tid,s){cb.onchange=function(){toggleSlot(tid,s,this.checked);};})(t.id,slot);
+          var lbl=document.createElement('span');lbl.className='slot-time';lbl.textContent=slot;
+          row.appendChild(cb);row.appendChild(lbl);
+          slotsDiv.appendChild(row);
+        });
+        tcBody.appendChild(slotsDiv);
+        tcLeft.appendChild(tcBody);
+      } else {
+        var cb2=document.createElement('input');cb2.type='checkbox';cb2.className='tc-check';cb2.checked=!!t.done;
+        (function(id){cb2.onchange=function(){toggleDone(id,this.checked);};})(t.id);
+        if(!t.done) metaEl.appendChild(makeTag('tc-tag tag-'+t._cat,t._cat==='do'?'Do Now':t._cat==='schedule'?'Schedule':'Defer'));
+        if(od&&!t.done) metaEl.appendChild(makeTag('tc-tag tag-overdue','OVERDUE'));
+        if(ds&&ds!=='OVERDUE'&&!t.done) metaEl.appendChild(makeTag('tc-tag tag-soon',ds));
+        if(t.deadline) metaEl.appendChild(makeTag('tc-tag tag-dl',fmtDate(t.deadline)+(t.deadline.indexOf('T')>=0?' '+fmtTime(t.deadline):'')));
+        else metaEl.appendChild(makeTag('tc-tag tag-dl','No deadline'));
+        if(t.notes){var n2=document.createElement('div');n2.className='tc-notes';n2.textContent=t.notes;tcBody.appendChild(n2);}
+        tcLeft.appendChild(cb2);tcLeft.appendChild(tcBody);
+      }
+
+      card.appendChild(tcLeft);card.appendChild(tcActions);
+      cards.appendChild(card);
+    });
+    div.appendChild(cards);el.appendChild(div);
+  });
+}
+
+function renderArchive(){
+  var el=document.getElementById('archive-list');el.textContent='';
+  if(!archive.length){var em=document.createElement('div');em.className='empty';em.textContent='No archived tasks yet.\nComplete a task to see it here.';el.appendChild(em);return;}
+  var byDate={};
+  archive.forEach(function(t){var dk=t.completedAt?new Date(t.completedAt).toDateString():'Unknown';if(!byDate[dk])byDate[dk]=[];byDate[dk].push(t);});
+  Object.entries(byDate).sort(function(a,b){return new Date(b[0])-new Date(a[0]);}).forEach(function(entry){
+    var dk=entry[0],items=entry[1];
+    var dh=document.createElement('div');dh.className='arc-date-hdr';dh.textContent=fmtFull(new Date(dk).toISOString());el.appendChild(dh);
+    items.slice().sort(function(a,b){return new Date(b.completedAt)-new Date(a.completedAt);}).forEach(function(t){
+      var ai=document.createElement('div');ai.className='arc-item';
+      var left=document.createElement('div');
+      var title=document.createElement('div');title.className='arc-title';
+      if(t.recurring){var rb=document.createElement('span');rb.style.cssText='font-size:10px;color:#7C3AED;margin-right:4px;';rb.textContent='↻';title.appendChild(rb);}
+      title.appendChild(document.createTextNode(t.title));
+      var meta=document.createElement('div');meta.className='arc-meta';meta.textContent='Im: '+t.importance+(t.deadline?' - Deadline was: '+fmtDate(t.deadline):'');
+      left.appendChild(title);left.appendChild(meta);
+      var timeEl=document.createElement('div');timeEl.className='arc-time';timeEl.textContent=t.completedAt?fmtTime(t.completedAt):'';
+      ai.appendChild(left);ai.appendChild(timeEl);
+      el.appendChild(ai);
+    });
+  });
+}
+
+function toggleSlot(id,slot,checked){
+  var t=tasks.find(function(t){return t.id===id;});if(!t||!t.recurring)return;
+  var today=todayKey();
+  if(!t.completionLog)t.completionLog={};
+  if(!t.completionLog[today])t.completionLog[today]=[];
+  if(checked){if(t.completionLog[today].indexOf(slot)<0)t.completionLog[today].push(slot);}
+  else{t.completionLog[today]=t.completionLog[today].filter(function(s){return s!==slot;});}
+  saveData();redrawAll();renderList();
+}
+
+function toggleDone(id,checked){
+  var t=tasks.find(function(t){return t.id===id;});if(!t||t.recurring)return;
+  if(checked){
+    if(!confirm('Mark "'+t.title+'" as complete and move to archive?')){renderList();return;}
+    t.completedAt=new Date().toISOString();
+    archive.unshift(Object.assign({},t,{done:true}));
+    tasks=tasks.filter(function(x){return x.id!==id;});
+    saveData();redrawAll();renderList();
+  }
+}
+
+function openDel(id){
+  delId=id;var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  var hasActivity=t.recurring?someSlotsDoneToday(t):t.done;
+  var msgEl=document.getElementById('del-msg');
+  msgEl.textContent=hasActivity
+    ?'"'+t.title+'" has completions today. Delete permanently?'
+    :'"'+t.title+'" is not completed yet. Are you sure you want to delete it?';
+  document.getElementById('del-reason-wrap').style.display=hasActivity?'none':'block';
+  document.getElementById('del-reason').value='';
+  document.getElementById('del-modal').classList.add('open');
+}
+function closeDelModal(){document.getElementById('del-modal').classList.remove('open');delId=null;}
+function confirmDel(){
+  if(!delId)return;
+  tasks=tasks.filter(function(t){return t.id!==delId;});
+  saveData();redrawAll();
+  if(document.getElementById('tab-list').classList.contains('active'))renderList();
+  checkExpiredRecurring();
+  closeDelModal();
+}
+
+function checkExpiredRecurring(){
+  var today=todayKey();
+  var area=document.getElementById('notif-area');area.textContent='';
+  tasks.filter(function(t){return t.recurring&&t.recurrenceEndDate&&t.recurrenceEndDate<today&&!t._expiryDismissed;}).forEach(function(t){
+    var b=document.createElement('div');b.className='notif-banner';
+    var msg=document.createElement('span');
+    msg.textContent="Task '"+t.title+"' has ended its recurrence - extend, archive, or delete?";
+    var extBtn=document.createElement('button');extBtn.className='notif-action notif-extend';extBtn.textContent='Extend';
+    (function(id){extBtn.onclick=function(){extendRecurring(id);};})(t.id);
+    var arcBtn=document.createElement('button');arcBtn.className='notif-action notif-archive';arcBtn.textContent='Archive';
+    (function(id){arcBtn.onclick=function(){archiveRecurring(id);};})(t.id);
+    var delBtn=document.createElement('button');delBtn.className='notif-action notif-delete';delBtn.textContent='Delete';
+    (function(id){delBtn.onclick=function(){openDel(id);};})(t.id);
+    var dimBtn=document.createElement('button');dimBtn.className='notif-dismiss';dimBtn.textContent='×';dimBtn.title='Dismiss';
+    (function(id){dimBtn.onclick=function(){dismissExpiry(id);};})(t.id);
+    b.appendChild(msg);b.appendChild(extBtn);b.appendChild(arcBtn);b.appendChild(delBtn);b.appendChild(dimBtn);
+    area.appendChild(b);
+  });
+}
+function extendRecurring(id){
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  var v=prompt('New end date (YYYY-MM-DD), or leave blank for no end:','');
+  if(v===null)return;
+  t.recurrenceEndDate=v.trim()||null;t._expiryDismissed=false;
+  saveData();checkExpiredRecurring();redrawAll();
+  if(document.getElementById('tab-list').classList.contains('active'))renderList();
+}
+function archiveRecurring(id){
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  t.completedAt=new Date().toISOString();
+  archive.unshift(Object.assign({},t,{done:true}));
+  tasks=tasks.filter(function(x){return x.id!==id;});
+  saveData();redrawAll();checkExpiredRecurring();
+  if(document.getElementById('tab-list').classList.contains('active'))renderList();
+}
+function dismissExpiry(id){
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  t._expiryDismissed=true;saveData();checkExpiredRecurring();
+}
+
+function checkDateChange(){
+  var today=todayKey();
+  if(today!==_lastDate){
+    _lastDate=today;
+    redrawAll();
+    if(document.getElementById('tab-list').classList.contains('active'))renderList();
+  }
+  checkExpiredRecurring();
+}
+
+function renderModalSlots(){
+  var c=document.getElementById('f-slots-list');c.textContent='';
+  if(!modalTimeSlots.length){
+    var hint=document.createElement('div');hint.style.cssText='font-size:12px;color:#9CA3AF;font-style:italic;padding:2px 0;';hint.textContent='No time slots - click "+ Add time slot" below';
+    c.appendChild(hint);return;
+  }
+  modalTimeSlots.forEach(function(slot,i){
+    var row=document.createElement('div');row.className='slot-row';
+    var inp=document.createElement('input');inp.className='f-input';inp.type='time';inp.value=slot;inp.style.flex='1';
+    (function(idx){inp.oninput=function(){modalTimeSlots[idx]=this.value;};})(i);
+    var rem=document.createElement('button');rem.type='button';rem.className='slot-rem-btn';rem.textContent='×';
+    (function(idx){rem.onclick=function(){removeTimeSlot(idx);};})(i);
+    row.appendChild(inp);row.appendChild(rem);c.appendChild(row);
+  });
+}
+function addTimeSlot(){modalTimeSlots.push('08:00');renderModalSlots();}
+function removeTimeSlot(i){modalTimeSlots.splice(i,1);renderModalSlots();}
+function updateRecurrenceUI(){
+  var weekly=document.getElementById('f-rectype').value==='weekly';
+  document.getElementById('f-days-wrap').style.display=weekly?'block':'none';
+}
+function updateEndUI(){
+  var v=document.getElementById('f-endtype').value;
+  document.getElementById('f-enddate-wrap').style.display=v==='date'?'block':'none';
+  document.getElementById('f-enddays-wrap').style.display=v==='days'?'block':'none';
+}
+
+function openAdd(){
+  editId=null;modalTimeSlots=[];
+  document.getElementById('modal-title').textContent='Add Task';
+  document.getElementById('f-title').value='';
+  document.getElementById('f-im').value=70;document.getElementById('f-im-val').textContent='70';
+  document.getElementById('f-hasdl').checked=false;
+  document.getElementById('f-urgency').value=50;document.getElementById('f-ur-val').textContent='50';
+  document.getElementById('f-deadline').value='';
+  document.getElementById('f-notes').value='';
+  document.getElementById('f-recurring').checked=false;
+  document.getElementById('f-rectype').value='daily';
+  document.getElementById('f-rec-urgency').value=75;document.getElementById('f-rec-ur-val').textContent='75';
+  document.getElementById('f-endtype').value='none';
+  document.getElementById('f-enddate').value='';document.getElementById('f-enddays').value='';
+  document.querySelectorAll('.rec-day').forEach(function(cb){cb.checked=false;});
+  toggleRecurring();toggleDL();renderModalSlots();updateEndUI();updateRecurrenceUI();
+  previewCat();
+  document.getElementById('add-modal').classList.add('open');
+  setTimeout(function(){document.getElementById('f-title').focus();},80);
+}
+function openEdit(id){
+  var t=tasks.find(function(t){return t.id===id;});if(!t)return;
+  editId=id;
+  modalTimeSlots=t.recurrenceTimes?t.recurrenceTimes.slice():[];
+  document.getElementById('modal-title').textContent='Edit Task';
+  document.getElementById('f-title').value=t.title;
+  document.getElementById('f-im').value=t.importance;document.getElementById('f-im-val').textContent=t.importance;
+  document.getElementById('f-notes').value=t.notes||'';
+  document.getElementById('f-recurring').checked=!!t.recurring;
+  toggleRecurring();
+  if(t.recurring){
+    document.getElementById('f-rectype').value=t.recurrenceType||'daily';
+    updateRecurrenceUI();
+    document.querySelectorAll('.rec-day').forEach(function(cb){cb.checked=(t.recurrenceDays||[]).indexOf(cb.value)>=0;});
+    document.getElementById('f-rec-urgency').value=t.urgencyManual||75;
+    document.getElementById('f-rec-ur-val').textContent=t.urgencyManual||75;
+    if(t.recurrenceEndDate){document.getElementById('f-endtype').value='date';document.getElementById('f-enddate').value=t.recurrenceEndDate;}
+    else{document.getElementById('f-endtype').value='none';document.getElementById('f-enddate').value='';}
+    document.getElementById('f-enddays').value='';
+    updateEndUI();renderModalSlots();
+  } else {
+    var hasDL=!!t.deadline;
+    document.getElementById('f-hasdl').checked=hasDL;toggleDL();
+    if(hasDL)document.getElementById('f-deadline').value=t.deadline;
+    document.getElementById('f-urgency').value=t.urgencyManual||50;
+    document.getElementById('f-ur-val').textContent=t.urgencyManual||50;
+  }
+  previewCat();
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeAdd(){document.getElementById('add-modal').classList.remove('open');editId=null;}
+
+function toggleDL(){
+  var has=document.getElementById('f-hasdl').checked;
+  document.getElementById('f-dl-wrap').style.display=has?'block':'none';
+  document.getElementById('f-ur-wrap').style.display=has?'none':'block';
+  document.getElementById('f-dl-txt').textContent=has?'On - enter deadline below':'No - set manual urgency below';
+  previewCat();
+}
+function toggleRecurring(){
+  var isRec=document.getElementById('f-recurring').checked;
+  document.getElementById('f-rec-wrap').style.display=isRec?'block':'none';
+  document.getElementById('f-dl-section').style.display=isRec?'none':'block';
+  document.getElementById('f-rec-txt').textContent=isRec?'Yes - this task repeats on a schedule':'No - one-off task';
+  previewCat();
+}
+function previewCat(){
+  var im=parseInt(document.getElementById('f-im').value);
+  var isRec=document.getElementById('f-recurring').checked;
+  var pr;
+  if(isRec){
+    pr=parseInt(document.getElementById('f-rec-urgency').value)||75;
+  } else {
+    var hasDL=document.getElementById('f-hasdl').checked;
+    if(hasDL){
+      var dv=document.getElementById('f-deadline').value;
+      if(dv){var days=(new Date(dv)-new Date())/86400000;pr=days<=0?99:days<0.5?96:days<1?92:days<2?87:days<4?80:days<7?70:days<14?55:days<30?38:25;}
+      else pr=50;
+    } else pr=parseInt(document.getElementById('f-urgency').value);
+  }
+  var cat=calcCat(pr,im);
+  var cn={do:'Do Now',schedule:'Schedule',defer:'Defer'};
+  var pb=document.getElementById('preview-box');
+  pb.textContent=(isRec?'↻ Recurring - ':'')+'Predicted: '+cn[cat]+' - Priority: '+Math.round(pr)+' - Importance: '+im;
+}
+
+function saveTask(){
+  var title=document.getElementById('f-title').value.trim();
+  if(!title){document.getElementById('f-title').focus();return;}
+  var im=parseInt(document.getElementById('f-im').value);
+  var isRec=document.getElementById('f-recurring').checked;
+  var notes=document.getElementById('f-notes').value.trim();
+  var taskData;
+  if(isRec){
+    if(!modalTimeSlots.length){alert('Add at least one time slot for the recurring task.');return;}
+    var recType=document.getElementById('f-rectype').value;
+    var recDays=recType==='weekly'?Array.from(document.querySelectorAll('.rec-day:checked')).map(function(c){return c.value;}):[];
+    var endType=document.getElementById('f-endtype').value;
+    var recEndDate=null;
+    if(endType==='date'){recEndDate=document.getElementById('f-enddate').value||null;}
+    else if(endType==='days'){var n=parseInt(document.getElementById('f-enddays').value);if(n>0){var d2=new Date();d2.setDate(d2.getDate()+n);recEndDate=d2.toISOString().slice(0,10);}}
+    var urgencyManual2=parseInt(document.getElementById('f-rec-urgency').value)||75;
+    taskData={recurring:true,recurrenceType:recType,recurrenceTimes:modalTimeSlots.slice().sort(),recurrenceDays:recDays,recurrenceEndDate:recEndDate,recurrenceEndAfterDays:null,urgencyManual:urgencyManual2,deadline:null,done:false};
+  } else {
+    var hasDL2=document.getElementById('f-hasdl').checked;
+    var deadline=hasDL2?document.getElementById('f-deadline').value||null:null;
+    var urgencyManual=hasDL2?null:parseInt(document.getElementById('f-urgency').value);
+    taskData={recurring:false,recurrenceType:null,recurrenceTimes:[],recurrenceDays:[],recurrenceEndDate:null,recurrenceEndAfterDays:null,urgencyManual:urgencyManual,deadline:deadline};
+  }
+  if(editId){
+    var t=tasks.find(function(t){return t.id===editId;});
+    if(t){Object.assign(t,{title:title,importance:im,notes:notes},taskData);if(!t.completionLog)t.completionLog={};}
+  } else {
+    var newTask={id:nextId(),title:title,importance:im,notes:notes,done:false,createdAt:new Date().toISOString(),completionLog:{}};
+    Object.assign(newTask,taskData);
+    tasks.push(newTask);
+  }
+  saveData();redrawAll();
+  if(document.getElementById('tab-list').classList.contains('active'))renderList();
+  checkExpiredRecurring();
+  closeAdd();
+}
+
+function init(){
+  loadData();
+  tick();setInterval(tick,1000);
+  drawBg();redrawAll();
+  setInterval(function(){redrawAll();if(document.getElementById('tab-list').classList.contains('active'))renderList();},60000);
+  setInterval(checkDateChange,30000);
+  checkExpiredRecurring();
+}
+init();
+</script>
+</body>
+</html>
