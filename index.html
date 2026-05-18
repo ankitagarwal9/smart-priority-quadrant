@@ -261,6 +261,13 @@ footer{font-size:10px;color:#9CA3AF;text-align:center;margin-top:20px;padding-to
         <input class="f-input" type="number" id="f-enddays" min="1" max="3650" placeholder="e.g. 30">
       </div>
     </div>
+    <div class="f-row" id="f-autoarchive-wrap">
+      <label class="f-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <label class="tog"><input type="checkbox" id="f-autoarchive"><span class="tog-sl"></span></label>
+        Auto-archive when deadline passes
+        <span style="font-size:10px;color:#9CA3AF;">(for meetings, one-off events)</span>
+      </label>
+    </div>
     <div class="f-row">
       <label class="f-lbl">Notes (optional)</label>
       <textarea class="f-input" id="f-notes" rows="2" placeholder="Context, blockers, links..."></textarea>
@@ -320,6 +327,22 @@ function allSlotsDoneToday(t){
 }
 function someSlotsDoneToday(t){
   return getSlotsDoneToday(t).length>0;
+}
+function isTaskActiveToday(t){
+  if(!t.recurring) return false;
+  if(t.recurrenceType==='weekly'){
+    var days=['sun','mon','tue','wed','thu','fri','sat'];
+    var today=days[new Date().getDay()];
+    return (t.recurrenceDays||[]).indexOf(today)>=0;
+  }
+  return true;
+}
+function getSlotsOverdueToday(t){
+  if(!t.recurring||!isTaskActiveToday(t)) return [];
+  var now=new Date();
+  var hhmm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  var done=getSlotsDoneToday(t);
+  return (t.recurrenceTimes||[]).filter(function(s){return s<hhmm&&done.indexOf(s)<0;});
 }
 
 var _lastDate=todayKey();
@@ -388,6 +411,13 @@ function esc(s){
 function tick(){
   var n=new Date();
   document.getElementById('clock').textContent=n.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' - '+n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var changed=false;
+  tasks.filter(function(t){return !t.done&&!t.recurring&&t.autoArchive&&t.deadline&&new Date(t.deadline)<n;}).forEach(function(t){
+    archive.unshift(Object.assign({},t,{done:true,archivedAt:n.toISOString()}));
+    tasks=tasks.filter(function(x){return x.id!==t.id;});
+    changed=true;
+  });
+  if(changed){saveData();redrawAll();if(document.getElementById('tab-list').classList.contains('active'))renderList();}
 }
 function updateStats(){
   var act=tasks.filter(function(t){return !t.done;});
@@ -477,7 +507,10 @@ function drawDots(){
     if(t.recurring){
       var allDone=allSlotsDoneToday(t);
       var someDone=someSlotsDoneToday(t);
-      var dotColor=allDone?'#059669':someDone?'#F59E0B':CC[cat];
+      var overdueSlots=getSlotsOverdueToday(t);
+      var recOD=overdueSlots.length>0;
+      var dotColor=allDone?'#059669':recOD&&!someDone?'#DC2626':recOD&&someDone?'#F59E0B':someDone?'#F59E0B':CC[cat];
+      if(recOD&&!someDone) mkEl('circle',{cx:x,cy:y,r:r+5,fill:'none',stroke:'#DC2626','stroke-width':2,opacity:.6},dg);
       mkEl('circle',{cx:x,cy:y,r:r+4,fill:'none',stroke:'#7C3AED','stroke-width':2,opacity:.75},dg);
       mkEl('circle',{cx:x,cy:y,r:r,fill:dotColor,stroke:'white','stroke-width':1.5},dg);
       tx.setAttribute('font-size',allDone?'9':'7');
@@ -805,6 +838,7 @@ function openAdd(){
   document.getElementById('f-urgency').value=50;document.getElementById('f-ur-val').textContent='50';
   document.getElementById('f-deadline').value='';
   document.getElementById('f-notes').value='';
+  document.getElementById('f-autoarchive').checked=false;
   document.getElementById('f-recurring').checked=false;
   document.getElementById('f-rectype').value='daily';
   document.getElementById('f-rec-urgency').value=75;document.getElementById('f-rec-ur-val').textContent='75';
@@ -842,6 +876,7 @@ function openEdit(id){
     if(hasDL)document.getElementById('f-deadline').value=t.deadline;
     document.getElementById('f-urgency').value=t.urgencyManual||50;
     document.getElementById('f-ur-val').textContent=t.urgencyManual||50;
+    document.getElementById('f-autoarchive').checked=!!t.autoArchive;
   }
   previewCat();
   document.getElementById('add-modal').classList.add('open');
@@ -859,6 +894,7 @@ function toggleRecurring(){
   var isRec=document.getElementById('f-recurring').checked;
   document.getElementById('f-rec-wrap').style.display=isRec?'block':'none';
   document.getElementById('f-dl-section').style.display=isRec?'none':'block';
+  document.getElementById('f-autoarchive-wrap').style.display=isRec?'none':'flex';
   document.getElementById('f-rec-txt').textContent=isRec?'Yes - this task repeats on a schedule':'No - one-off task';
   previewCat();
 }
@@ -903,7 +939,8 @@ function saveTask(){
     var hasDL2=document.getElementById('f-hasdl').checked;
     var deadline=hasDL2?document.getElementById('f-deadline').value||null:null;
     var urgencyManual=hasDL2?null:parseInt(document.getElementById('f-urgency').value);
-    taskData={recurring:false,recurrenceType:null,recurrenceTimes:[],recurrenceDays:[],recurrenceEndDate:null,recurrenceEndAfterDays:null,urgencyManual:urgencyManual,deadline:deadline};
+    var autoArchive=document.getElementById('f-autoarchive').checked;
+    taskData={recurring:false,recurrenceType:null,recurrenceTimes:[],recurrenceDays:[],recurrenceEndDate:null,recurrenceEndAfterDays:null,urgencyManual:urgencyManual,deadline:deadline,autoArchive:autoArchive};
   }
   if(editId){
     var t=tasks.find(function(t){return t.id===editId;});
