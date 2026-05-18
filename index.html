@@ -517,6 +517,40 @@ function drawDots(){
       TT.style.display='block';
     });
     dg.addEventListener('mouseleave',function(){TT.style.display='none';});
+    dg.addEventListener('touchstart',function(e){
+      e.preventDefault();
+      var touch=e.touches[0];
+      var rb=CW.getBoundingClientRect();
+      var lx=touch.clientX-rb.left+15,ly=touch.clientY-rb.top-60;
+      if(lx>rb.width-275) lx=touch.clientX-rb.left-275;if(ly<0)ly=5;
+      var ds=daysStr(t);
+      TT.style.left=lx+'px';TT.style.top=ly+'px';
+      var parts=[];
+      if(t.recurring){
+        var done=getSlotsDoneToday(t);
+        var info=document.createElement('span');
+        info.style.cssText='display:block;font-size:10px;color:#7C3AED;';
+        info.textContent='↻ Recurring - Today: '+done.length+'/'+((t.recurrenceTimes||[]).length)+' slots done'+(ds?' - '+ds:'');
+        parts.push(info);
+      } else if(t.deadline){
+        var od=new Date(t.deadline)<new Date();
+        var dlSpan=document.createElement('span');
+        dlSpan.style.cssText='display:block;font-size:10px;color:'+(od?'#DC2626':'#9CA3AF')+';';
+        dlSpan.textContent=(ds||'')+' - '+fmtDate(t.deadline)+' '+fmtTime(t.deadline);
+        parts.push(dlSpan);
+      }
+      var catSpan=document.createElement('span');
+      catSpan.style.cssText='display:block;font-size:10px;color:#9CA3AF;';
+      catSpan.textContent='Category: '+{do:'Do Now',schedule:'Schedule',defer:'Defer'}[cat]+' - Im: '+t.importance+' - Pr: '+Math.round(pr);
+      parts.push(catSpan);
+      var wrap=document.createElement('strong');
+      wrap.textContent='#'+t.id+' '+t.title;
+      TT.textContent='';
+      TT.appendChild(wrap);
+      parts.forEach(function(p){TT.appendChild(p);});
+      TT.style.display='block';
+      setTimeout(function(){TT.style.display='none';},3000);
+    },{passive:false});
     g.appendChild(dg);
   });
 }
@@ -886,6 +920,7 @@ function init(){
   setInterval(function(){redrawAll();if(document.getElementById('tab-list').classList.contains('active'))renderList();},60000);
   setInterval(checkDateChange,30000);
   checkExpiredRecurring();
+  SVGEL.addEventListener('touchstart',function(e){if(e.target===SVGEL||e.target.tagName==='rect'||e.target.tagName==='line'||e.target.tagName==='text')TT.style.display='none';},{passive:true});
 }
 init();
 </script>
